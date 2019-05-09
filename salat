@@ -1,0 +1,4 @@
+#!/bin/bash
+
+cd /home/trwnh/bin/salatime
+python bisweb.py
