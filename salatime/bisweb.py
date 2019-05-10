@@ -5,8 +5,10 @@ from bs4 import BeautifulSoup as bs
 import re
 
 BASE_URL = "https://aleemstudio.com/SalatTimings/SalatTimings4MonthExternal/"
-month = datetime.now().month
-day = datetime.now().day
+current_month = datetime.now().month
+current_day = datetime.now().day
+current_hour = datetime.now().hour
+current_minute = datetime.now().minute
 rc.install_cache()
 
 months = [
@@ -50,11 +52,11 @@ def getListOfTimes(table):
   return timelist
 
 def getCurrentDayTimes(timelist):
-  return timelist[day-1] # 0-index -- unnecessary if you keep <th>
+  return timelist[current_day-1] # 0-index -- unnecessary if you keep <th>
 
 def displayTimes(today):
   print("")
-  print(months[month],today[0],"|","Ramadan",getRamadanDay())
+  print(months[current_month],today[0],"|","Ramadan",getRamadanDay())
   print("=================")
   print("   Fajr: ",today[1],"AM")
   print("Sunrise: ",today[2],"AM")
@@ -65,58 +67,59 @@ def displayTimes(today):
   print("")
 
 def getRamadanDay(): # only works for 2019
-  if month == 5:
-    return day - 5
+  if current_month == 5:
+    return current_day - 5
   elif month == 6:
-    return day + 26
+    return current_day + 26
 
 def displayCurrentPrayer(today): # impure function, also ugly -- TODO: refactor
+  today_times = today[1:] # chop off date
   # convert PM into 24h
-  for i in range(3,7):
-    hm = re.split(':',today[i])
-    hour = hm[0]
-    minute = hm[1]
-    if int(hour) < 12:
-      hour = str(int(hour) + 12)
-    today[i] = f"{hour}:{minute}"
-  current_hour = datetime.now().hour
-  current_minute = datetime.now().minute
+  for i in range(2,6):
+    prayer_hour, prayer_minute = splitHM(today_times[i])
+    if prayer_hour < 12:
+      prayer_hour += 12
+    today_times[i] = f"{prayer_hour}:{prayer_minute}"
   
   # actually calculate current / remaining
-  for prayer in today[1:]:
-    hm = re.split(':',prayer)
-    prayer_hour = int(hm[0])
-    prayer_minute = int(hm[1])
-    for i in range(1,7):
-      if f"{prayer_hour}:{prayer_minute}" == today[i]:
-        if i in range(2,7):
-          current_prayer = i-1 # before next prayer
-        else:
-          current_prayer = 0 # pre-fajr interval
-      rem_hour = prayer_hour - current_hour
-      rem_min = prayer_minute - current_minute
-      if rem_min < 0:
-        rem_min += 60
-        rem_hour -= 1
-        
-    # determine format and print
+  for prayer_time in today_times:
+    prayer_hour, prayer_minute = splitHM(prayer_time)
+    # wastefully calculate remaining time even when not determined to be current
+    rem_hour = prayer_hour - current_hour
+    rem_min = prayer_minute - current_minute
+    if rem_min < 0:
+      rem_min += 60
+      rem_hour -= 1
+    # determine current and print
     if prayer_hour < current_hour:
       continue
     if prayer_hour == current_hour:
       if prayer_minute <= current_minute:
         continue
       else:
-        print(f"Time until next prayer is {prayer_minute-current_minute} minutes.")
-        print("Current prayer:",prayers[current_prayer-1],today[current_prayer])
-        break
+        next_prayer = findNextPrayer(prayer_time, today_times)
+        print(f"Current prayer is {prayers[next_prayer - 1]} since {today[next_prayer]}.",)
+        print(f"Next prayer is {prayers[next_prayer]} at {prayer_time}.")
+        print(f"Time until next prayer is {rem_hour} hours and {rem_min} minutes.")
+      break
     else:
+      next_prayer = findNextPrayer(prayer_time, today_times)
+      print(f"Current prayer is {prayers[next_prayer - 1]} since {today[next_prayer]}.",)
+      print(f"Next prayer is {prayers[next_prayer]} at {prayer_time}.")
       print(f"Time until next prayer is {rem_hour} hours and {rem_min} minutes.")
-      print("Current prayer:",prayers[current_prayer-1],today[current_prayer])
       break
 
+def splitHM(time):
+  hm = re.split(':',time)
+  return int(hm[0]), int(hm[1])
+
+def findNextPrayer(time, today_times):
+  for i in range(len(today)):
+    if time == today_times[i]:
+      return i
 
 if __name__ == '__main__':
-  page = getCurrentMonthPage(month)
+  page = getCurrentMonthPage(current_month)
   table = getTimesTable(page)
   timelist = getListOfTimes(table)
   today = getCurrentDayTimes(timelist)
