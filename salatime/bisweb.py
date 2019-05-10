@@ -70,7 +70,7 @@ def getRamadanDay(): # only works for 2019
   elif month == 6:
     return day + 26
 
-def displayCurrentPrayer(today): # impure function, also ugly
+def displayCurrentPrayer(today): # impure function, also ugly -- TODO: refactor
   for i in range(3,7):
     hm = re.split(':',today[i])
     hour = hm[0]
@@ -84,6 +84,18 @@ def displayCurrentPrayer(today): # impure function, also ugly
     hm = re.split(':',prayer)
     hour = int(hm[0])
     minute = int(hm[1])
+    for i in range(1,7):
+      if f"{hm[0]}:{hm[1]}" == today[i]:
+        if i in range(2,7):
+          current_prayer = i-1 # before next prayer
+        else:
+          current_prayer = 0 # pre-fajr interval
+      rem_hour = hour - current_hour
+      rem_min = minute - current_minute
+      if rem_min < 0:
+        rem_min += 60
+        rem_hour -= 1
+    # determine current + print
     if hour < current_hour:
       continue
     if hour == current_hour:
@@ -91,19 +103,9 @@ def displayCurrentPrayer(today): # impure function, also ugly
         continue
       else:
         print(f"Time until next prayer is {minute-current_minute} minutes.")
+        print("Current prayer:",prayers[current_prayer-1],today[current_prayer])
         break
     else:
-      for i in range(1,7):
-        if f"{hm[0]}:{hm[1]}" == today[i]:
-          if i in range(2,7):
-            current_prayer = i-1
-          else:
-            current_prayer = 0
-      rem_hour = hour - current_hour
-      rem_min = minute - current_minute
-      if rem_min < 0:
-        rem_min += 60
-        rem_hour -= 1
       print(f"Time until next prayer is {rem_hour} hours and {rem_min} minutes.")
       print("Current prayer:",prayers[current_prayer-1],today[current_prayer])
       break
