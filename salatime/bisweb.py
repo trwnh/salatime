@@ -82,8 +82,8 @@ def split(time):
   Input: Time in the form HH:MM (str)
   Output: Hours, minutes (int, int)
   """
-  hm = re.split(':',time)
-  return int(hm[0]), int(hm[1])
+  hour, minute = re.split(':',time)
+  return int(hour), int(minute)
 
 def PMto24(prayer_time):
   """Converts PM prayer time to 24-hour format.
@@ -91,12 +91,12 @@ def PMto24(prayer_time):
   Output: Time in HH:MM (str)
   Note: 
   """
-  h, m = split(prayer_time)
-  if h < 12: 
-    h += 12
-  if h > 22: # prayer after 9:30pm is unrealistic
-    h -= 12 # ... so this is probably duhr at 11am (winter)
-  return f"{h}:{m}"
+  hour, minute = split(prayer_time)
+  if hour < 12: 
+    hour += 12
+  if hour > 22: # prayer after 9:30pm is unrealistic
+    hour -= 12 # ... so this is probably duhr at 11am (winter)
+  return f"{hour}:{minute}"
 
 def time_until(time):
   """Calculates difference between current time and target time.
@@ -119,17 +119,21 @@ def currentPrayer(day):
   Output: Index of current prayer (int)
   (PM logic is very naive due to lack of actual AM/PM in source data.)
   """
-  for i in irange(1,5):
-    prayer_time = day[i]
-    if i in irange(3,6):
-      prayer_time = PMto24(prayer_time)
-    h,m = time_until(prayer_time)
-    if (h > 0) or (h==0 and m > 0):
+  for i, time in enumerate(day):
+    if i == 0: # day[0] is the date,
+      continue # so skip it bc it's not a prayer time.
+    if i == 6: # if you reach isha,
+      return i # then it is current bc all others are not current.
+    if i > 2: # if it's not fajr or shurooq,
+      time = PMto24(time) # then it's most likely a PM time.
+    hours_until, minutes_until = time_until(time)
+    time_in_future = (hours_until > 0) or (hours_until == 0 and minutes_until > 0)
+    if time_in_future:
       return i-1
-  return 6
 
 def getRamadanDay():
   """Returns today's date in Ramadan (only for 2019)"""
+  # TODO: make it more generic by parsing GET response of 13th month
   if current_month == 5:
     return current_day - 5
   elif month == 6:
@@ -142,9 +146,11 @@ def display(day):
   Input: A day and its prayer times (list[str])
   Output: (print to console)
   """
-
-  print("")
-  print(months[current_month],day[0],"| Ramadan",getRamadanDay()) #TODO: support months other than current_month
+# TODO: use multiple assignment? date,fajr,...,isha = day
+#   - on second thought, nah, it's less readable.
+#   - may want to consider auxiliary function to set global vars on runtime?
+# TODO: support months other than current_month
+  print(months[current_month],day[0],"| Ramadan",getRamadanDay())
   print("=================")
   print("   Fajr: ",day[1],"AM")
   print("Shurooq: ",day[2],"AM")
@@ -152,19 +158,20 @@ def display(day):
   print("    Asr: ",day[4],"PM")
   print("Maghrib: ",day[5],"PM")
   print("   Isha: ",day[6],"PM")
-  print("")
 
 def displayActive(day):
   """Print metrics about the current/next prayers. Input implied to be today.
   Input: A day and its prayer times (list[str])
   Output: (print to console)
   """
+
   current = currentPrayer(day)
-  if not current: # 0 = qiyam (pre-fajr)
+
+  if not current: # 0 = qiyam (pre-fajr), no real current prayer
     print("Current prayer is Qiyam.")
   else:
     current_prayer = day[current]
-    if current in irange(3,6):
+    if current in irange(3,6): # current in [duhr, asr, maghrib, isha]
       current_prayer = PMto24(current_prayer)
     print(f"Current prayer is {prayers[current]} since {current_prayer}.")
   
@@ -172,7 +179,7 @@ def displayActive(day):
 
   if current in irange(0,5): # isha has no next prayer
     next_prayer = day[current+1]
-    if current+1 in irange(3,6): # next = [duhr, asr, maghrib, isha]
+    if current+1 in irange(3,6): # next in [duhr, asr, maghrib, isha]
       next_prayer = PMto24(next_prayer)
     print(f"Next prayer is {prayers[current+1]} at {next_prayer}.")
     h,m = time_until(next_prayer)
@@ -181,13 +188,18 @@ def displayActive(day):
     else:
       print(f"Time until next prayer is {m} minutes.")
 
-
 #%% Default output
 
 if __name__ == '__main__':
+  #start_time = datetime.now()
   page = getCurrentMonthPage(current_month)
   table = getTimesTable(page)
   month = parse(table)
   today = month[current_day]
+  print("")
   display(today)
+  print("")
   displayActive(today)
+  print("")
+  #end_time = datetime.now()
+  #print("Time taken:",end_time-start_time)
