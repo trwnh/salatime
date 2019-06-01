@@ -136,7 +136,7 @@ def getRamadanDay():
   # TODO: make it more generic by parsing GET response of 13th month
   if current_month == 5:
     return current_day - 5
-  elif month == 6:
+  elif current_month == 6:
     return current_day + 26
 
 #%% Display and output
