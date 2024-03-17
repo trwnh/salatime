@@ -1,3 +1,5 @@
+# NO LONGER WORKS due to source web service now being unavailable
+
 # salatime
 basic terminal script to print out daily prayer times for birmingham al.
 
